@@ -15,14 +15,17 @@ import connectDB from './config/db.js';
 import { notFound, errorHandler } from './middleware/errorMiddleware.js';
 
 const port = process.env.PORT || 5000;
-const frontendURL = process.env.FRONTEND_URL || 'https://main--equipmentool.netlify.app';
+const allowedOrigins = [
+  'https://main--equipmentool.netlify.app',
+  'https://equipmentool.netlify.app'
+];
 
 connectDB();
 
 const app = express();
 
 app.use(cors({
-  origin: frontendURL,
+  origin: allowedOrigins,
   credentials: true,
 }));
 
@@ -41,7 +44,7 @@ app.use('/api/v1/upload', uploadRoutes);
 app.use('/api/v1/payment', paymentRoutes);
 
 if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '/frontend/build')));
+  app.use(express.static(path.join(__dirname, 'frontend', 'build')));
   app.get('*', (req, res) => {
     res.sendFile(path.resolve(__dirname, 'frontend', 'build', 'index.html'));
   });
@@ -55,5 +58,5 @@ app.use(notFound);
 app.use(errorHandler);
 
 app.listen(port, '0.0.0.0', () => {
-  console.log(`Server running at ${frontendURL}`);
+  console.log(`Server running at ${port}`);
 });
