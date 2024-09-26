@@ -1,16 +1,10 @@
 import User from '../models/userModel.js';
 import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
-import { generateToken } from '../utils/generateToken.js';
 import transporter from '../config/email.js';
-// @desc     Auth user & get token
+
+// @desc     Auth user & get token (no token generation)
 // @method   POST
 // @endpoint /api/users/login
-// @access   Public
-
-// @desc     Register user
-// @method   POST
-// @endpoint /api/users
 // @access   Public
 const loginUser = async (req, res, next) => {
   try {
@@ -19,39 +13,34 @@ const loginUser = async (req, res, next) => {
     const user = await User.findOne({ email });
 
     if (!user) {
-      res.status(404).json({ message: 'Invalid email address. Please check your email and try again.' });
-      return;
+      res.statusCode = 404;
+      throw new Error('Invalid email address. Please check your email and try again.');
     }
 
     const match = await bcrypt.compare(password, user.password);
 
     if (!match) {
-      res.status(401).json({ message: 'Invalid password. Please check your password and try again.' });
-      return;
+      res.statusCode = 401;
+      throw new Error('Invalid password. Please check your password and try again.');
     }
 
-    // Generate JWT
-    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '30d' });
-
-    // Set the JWT cookie
-    res.cookie('jwt', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'None',
-    });
-
+    // No token generation
     res.status(200).json({
       message: 'Login successful.',
       userId: user._id,
       name: user.name,
       email: user.email,
-      isAdmin: user.isAdmin
+      isAdmin: user.isAdmin,
     });
   } catch (error) {
     next(error);
   }
 };
 
+// @desc     Register user (no token generation)
+// @method   POST
+// @endpoint /api/users
+// @access   Public
 const registerUser = async (req, res, next) => {
   try {
     const { name, email, password } = req.body;
@@ -68,19 +57,18 @@ const registerUser = async (req, res, next) => {
     const user = new User({
       name,
       email,
-      password: hashedPassword
+      password: hashedPassword,
     });
 
     await user.save();
 
-    generateToken(req, res, user._id);
-
+    // No token generation
     res.status(201).json({
       message: 'Registration successful. Welcome!',
       userId: user._id,
       name: user.name,
       email: user.email,
-      isAdmin: user.isAdmin
+      isAdmin: user.isAdmin,
     });
   } catch (error) {
     next(error);
@@ -91,20 +79,15 @@ const registerUser = async (req, res, next) => {
 // @method   POST
 // @endpoint /api/users/logout
 // @access   Private
-// @desc     Get user profile
-// @method   GET
-// @endpoint /api/users/profile
-// @access   Private
 const logoutUser = (req, res) => {
-  res.clearCookie('jwt', {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production', // Ensure secure flag in production
-    sameSite: 'None', // Adjust based on your requirements
-  });
-
+  res.clearCookie('jwt', { httpOnly: true });
   res.status(200).json({ message: 'Logout successful' });
 };
 
+// @desc     Get user profile (no token verification)
+// @method   GET
+// @endpoint /api/users/profile
+// @access   Private
 const getUserProfile = async (req, res, next) => {
   try {
     const user = await User.findById(req.user._id);
@@ -119,7 +102,7 @@ const getUserProfile = async (req, res, next) => {
       userId: user._id,
       name: user.name,
       email: user.email,
-      isAdmin: user.isAdmin
+      isAdmin: user.isAdmin,
     });
   } catch (error) {
     next(error);
@@ -161,7 +144,8 @@ const getUsers = async (req, res, next) => {
     next(error);
   }
 };
-// @desc     Get user
+
+// @desc     Get user by ID
 // @method   GET
 // @endpoint /api/users/:id
 // @access   Private/Admin
@@ -175,9 +159,7 @@ const getUserById = async (req, res, next) => {
     }
     res.status(200).json(user);
   } catch (error) {
-    res.status(500).json({
-      message: 'Internal Server Error'
-    });
+    res.status(500).json({ message: 'Internal Server Error' });
   }
 };
 
@@ -202,9 +184,7 @@ const updateUser = async (req, res, next) => {
 
     res.status(200).json({ message: 'User updated', updatedUser });
   } catch (error) {
-    res.status(500).json({
-      message: 'Internal Server Error'
-    });
+    res.status(500).json({ message: 'Internal Server Error' });
   }
 };
 
@@ -215,7 +195,6 @@ const updateUser = async (req, res, next) => {
 const updateUserProfile = async (req, res, next) => {
   try {
     const { name, email, password } = req.body;
-
     const user = await User.findById(req.user._id);
 
     if (!user) {
@@ -238,7 +217,7 @@ const updateUserProfile = async (req, res, next) => {
       userId: updatedUser._id,
       name: updatedUser.name,
       email: updatedUser.email,
-      isAdmin: updatedUser.isAdmin
+      isAdmin: updatedUser.isAdmin,
     });
   } catch (error) {
     next(error);
@@ -264,7 +243,7 @@ const deleteUser = async (req, res, next) => {
   }
 };
 
-// @desc     Send reset password email
+// @desc     Send reset password email (no JWT token generation)
 // @method   POST
 // @endpoint /api/users/reset-password/request
 // @access   Public
@@ -278,10 +257,8 @@ const resetPasswordRequest = async (req, res, next) => {
       throw new Error('User not found!');
     }
 
-    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
-      expiresIn: '15m'
-    });
-    const passwordResetLink = `https://mern-shop-abxs.onrender.com/reset-password/${user._id}/${token}`;
+    // Instead of using JWT, we directly send the link
+    const passwordResetLink = `https://mern-shop-abxs.onrender.com/reset-password/${user._id}`;
     console.log(passwordResetLink);
     await transporter.sendMail({
       from: `"MERN Shop" ${process.env.EMAIL_FROM}`, // sender address
@@ -296,38 +273,34 @@ const resetPasswordRequest = async (req, res, next) => {
             <p>If you didn't request this, you can ignore this email.</p>
 
             <p>Thanks,<br>
-            MERN Shop Team</p>` // html body
+            MERN Shop Team</p>`, // html body
     });
 
-    res
-      .status(200)
-      .json({ message: 'Password reset email sent, please check your email.' });
+    res.status(200).json({ message: 'Password reset email sent, please check your email.' });
   } catch (error) {
     next(error);
   }
 };
 
-// @desc     Reset password
+// @desc     Reset password (no JWT token verification)
 // @method   POST
-// @endpoint /api/users/reset-password/reset/:id/:token
+// @endpoint /api/users/reset-password/reset/:id
 // @access   Private
 const resetPassword = async (req, res, next) => {
   try {
     const { password } = req.body;
-    const { id: userId, token } = req.params;
+    const { id: userId } = req.params;
     const user = await User.findById(userId);
-    const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
 
-    if (!decodedToken) {
-      res.statusCode = 401;
-      throw new Error('Invalid or expired token');
+    if (!user) {
+      res.statusCode = 404;
+      throw new Error('User not found. Password reset failed.');
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-    user.password = hashedPassword;
+    user.password = await bcrypt.hash(password, 10);
     await user.save();
 
-    res.status(200).json({ message: 'Password successfully reset' });
+    res.status(200).json({ message: 'Password reset successful. You can now log in.' });
   } catch (error) {
     next(error);
   }
@@ -338,12 +311,12 @@ export {
   registerUser,
   logoutUser,
   getUserProfile,
+  admins,
   getUsers,
   getUserById,
   updateUser,
   updateUserProfile,
   deleteUser,
-  admins,
   resetPasswordRequest,
-  resetPassword
+  resetPassword,
 };
