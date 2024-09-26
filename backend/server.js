@@ -22,7 +22,7 @@ connectDB();
 const app = express();
 
 app.use(cors({
-  origin: FRONTEND_URL,
+  origin: frontendURL,
   credentials: true,
 }));
 
