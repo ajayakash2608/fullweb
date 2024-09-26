@@ -7,6 +7,11 @@ import transporter from '../config/email.js';
 // @method   POST
 // @endpoint /api/users/login
 // @access   Public
+
+// @desc     Register user
+// @method   POST
+// @endpoint /api/users
+// @access   Public
 const loginUser = async (req, res, next) => {
   try {
     const { email, password } = req.body;
@@ -14,22 +19,26 @@ const loginUser = async (req, res, next) => {
     const user = await User.findOne({ email });
 
     if (!user) {
-      res.statusCode = 404;
-      throw new Error(
-        'Invalid email address. Please check your email and try again.'
-      );
+      res.status(404).json({ message: 'Invalid email address. Please check your email and try again.' });
+      return;
     }
 
     const match = await bcrypt.compare(password, user.password);
 
     if (!match) {
-      res.statusCode = 401;
-      throw new Error(
-        'Invalid password. Please check your password and try again.'
-      );
+      res.status(401).json({ message: 'Invalid password. Please check your password and try again.' });
+      return;
     }
 
-    generateToken(req, res, user._id);
+    // Generate JWT
+    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '30d' });
+
+    // Set the JWT cookie
+    res.cookie('jwt', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'None',
+    });
 
     res.status(200).json({
       message: 'Login successful.',
@@ -43,10 +52,6 @@ const loginUser = async (req, res, next) => {
   }
 };
 
-// @desc     Register user
-// @method   POST
-// @endpoint /api/users
-// @access   Public
 const registerUser = async (req, res, next) => {
   try {
     const { name, email, password } = req.body;
