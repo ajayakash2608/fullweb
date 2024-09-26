@@ -1,7 +1,6 @@
 import User from '../models/userModel.js';
 import jwt from 'jsonwebtoken';
 
-// Middleware to protect routes by verifying JWT authentication token.
 const protect = async (req, res, next) => {
   try {
     const token = req.cookies.jwt;
@@ -18,20 +17,22 @@ const protect = async (req, res, next) => {
 
     req.user = await User.findById(decodedToken.userId).select('-password');
 
+    if (!req.user) {
+      return res.status(404).json({ message: 'User not found.' });
+    }
+
     next();
   } catch (error) {
     console.error('Error in protect middleware:', error);
-    return res.status(401).json({ message: 'Authentication failed: Invalid token.' });
+    return res.status(500).json({ message: 'Internal Server Error' });
   }
 };
 
-// Middleware to check if the user is an admin.
 const admin = (req, res, next) => {
   if (!req.user || !req.user.isAdmin) {
-    return res.status(401).json({ message: 'Authorization failed: Not authorized as an admin.' });
+    return res.status(403).json({ message: 'Authorization failed: Not authorized as an admin.' });
   }
   next();
 };
 
-// Export both protect and admin middleware
 export { protect, admin };
