@@ -29,10 +29,15 @@ const protect = async (req, res, next) => {
 };
 
 const admin = (req, res, next) => {
-  if (!req.user || !req.user.isAdmin) {
-    return res.status(403).json({ message: 'Authorization failed: Not authorized as an admin.' });
+  try {
+    if (!req.user || !req.user.isAdmin) {
+      return res.status(403).json({ message: 'Authorization failed: Not authorized as an admin.' });
+    }
+    next();
+  } catch (error) {
+    console.error('Error in admin middleware:', error);
+    return res.status(500).json({ message: 'Internal Server Error' });
   }
-  next();
 };
 
 export { protect, admin };
