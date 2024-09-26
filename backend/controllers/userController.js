@@ -86,16 +86,20 @@ const registerUser = async (req, res, next) => {
 // @method   POST
 // @endpoint /api/users/logout
 // @access   Private
-const logoutUser = (req, res) => {
-  res.clearCookie('jwt', { httpOnly: true });
-
-  res.status(200).json({ message: 'Logout successful' });
-};
-
 // @desc     Get user profile
 // @method   GET
 // @endpoint /api/users/profile
 // @access   Private
+const logoutUser = (req, res) => {
+  res.clearCookie('jwt', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production', // Ensure secure flag in production
+    sameSite: 'None', // Adjust based on your requirements
+  });
+
+  res.status(200).json({ message: 'Logout successful' });
+};
+
 const getUserProfile = async (req, res, next) => {
   try {
     const user = await User.findById(req.user._id);
